@@ -64,10 +64,10 @@ atlas -q "SpaceX" -e ddg
 
 ## 🏗️ Building for all platforms
 
-The project includes a Go-based build script to generate binaries for all platforms:
+The project uses **gobake** to generate binaries for all platforms:
 
 ```bash
-go run scripts/build.go
+gobake build
 ```
 Binaries will be placed in the `build/` directory.
 
