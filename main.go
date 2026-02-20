@@ -9,11 +9,20 @@ import (
 	"atlas.websearch/pkg/ui"
 )
 
+var Version = "dev"
+
 func main() {
 	queryFlag := flag.String("q", "", "Search query")
 	limit := flag.Int("l", 10, "Result limit")
 	engineType := flag.String("e", "ddg", "Engine to use (ddg, wiki, hn, reddit)")
+	version := flag.Bool("version", false, "Show version")
+	flag.BoolVar(version, "v", false, "Show version")
 	flag.Parse()
+
+	if *version {
+		fmt.Printf("atlas.websearch v%s\n", Version)
+		return
+	}
 
 	query := *queryFlag
 	// If -q is not provided, take only the first non-flag argument
