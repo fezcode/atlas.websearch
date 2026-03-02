@@ -13,11 +13,11 @@ import (
 
 var (
 	// Colors
-	purple       = lipgloss.Color("#7D56F4")
-	green        = lipgloss.Color("#04B575")
-	gray         = lipgloss.Color("#888888")
-	white        = lipgloss.Color("#FFFFFF")
-	brightPurple = lipgloss.Color("#9D76FF")
+	purple       = lipgloss.Color("#6B50FF")
+	green        = lipgloss.Color("#00D787")
+	gray         = lipgloss.Color("#626262")
+	white        = lipgloss.Color("#FFFDF5")
+	brightPurple = lipgloss.Color("#FF5F87") // Using Pink for selection
 
 	// Styles
 	headerStyle = lipgloss.NewStyle().
@@ -40,14 +40,14 @@ var (
 
 	selectedBoxStyle = resultBoxStyle.Copy().
 				BorderForeground(brightPurple).
-				Background(lipgloss.Color("#2D2D2D"))
+				Background(lipgloss.Color("#121212"))
 
 	titleStyle = lipgloss.NewStyle().
 			Bold(true).
 			Foreground(purple)
 
 	urlStyle = lipgloss.NewStyle().
-			Foreground(green).
+			Foreground(lipgloss.Color("#00D7FF")). // Cyan for URLs
 			Underline(true)
 
 	snippetStyle = lipgloss.NewStyle().
