@@ -12,6 +12,23 @@ import (
 var Version = "dev"
 
 func main() {
+	if len(os.Args) > 1 && (os.Args[1] == "-v" || os.Args[1] == "--version") {
+		fmt.Printf("atlas.websearch v%s\n", Version)
+		return
+	}
+	if len(os.Args) > 1 && (os.Args[1] == "-h" || os.Args[1] == "--help" || os.Args[1] == "help") {
+		fmt.Println("Atlas Websearch - Blazing fast CLI search tool.")
+		fmt.Println("\nUsage:")
+		fmt.Println("  atlas.websearch [query] [options]")
+		fmt.Println("\nOptions:")
+		fmt.Println("  -q string     Search query")
+		fmt.Println("  -e string     Engine to use (ddg, wiki, hn, reddit) (default \"ddg\")")
+		fmt.Println("  -l int        Result limit (default 10)")
+		fmt.Println("  -v, -version  Show version information")
+		fmt.Println("  -h, -help     Show this help")
+		return
+	}
+
 	queryFlag := flag.String("q", "", "Search query")
 	limit := flag.Int("l", 10, "Result limit")
 	engineType := flag.String("e", "ddg", "Engine to use (ddg, wiki, hn, reddit)")
