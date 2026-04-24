@@ -13,17 +13,13 @@ type Target struct {
 }
 
 func main() {
-	appName := "atlas-websearch"
+	appName := "atlas.websearch"
 	targets := []Target{
 		// Linux
-		{"linux", "386"},
 		{"linux", "amd64"},
-		{"linux", "arm"},
 		{"linux", "arm64"},
 		// Windows
-		{"windows", "386"},
 		{"windows", "amd64"},
-		{"windows", "arm"},
 		{"windows", "arm64"},
 		// macOS (Darwin)
 		{"darwin", "amd64"},
@@ -32,10 +28,8 @@ func main() {
 
 	buildDir := "build"
 
-	// Ensure build directory exists
 	if _, err := os.Stat(buildDir); os.IsNotExist(err) {
-		err := os.Mkdir(buildDir, 0755)
-		if err != nil {
+		if err := os.Mkdir(buildDir, 0755); err != nil {
 			fmt.Printf("Error creating build directory: %v\n", err)
 			return
 		}
@@ -50,15 +44,14 @@ func main() {
 		outputPath := filepath.Join(buildDir, outputName)
 		fmt.Printf("Building for %s/%s -> %s\n", t.OS, t.Arch, outputName)
 
-		cmd := exec.Command("go", "build", "-o", outputPath, "main.go")
+		cmd := exec.Command("go", "build", "-o", outputPath, ".")
 		cmd.Env = append(os.Environ(),
 			"GOOS="+t.OS,
 			"GOARCH="+t.Arch,
 			"CGO_ENABLED=0",
 		)
 
-		out, err := cmd.CombinedOutput()
-		if err != nil {
+		if out, err := cmd.CombinedOutput(); err != nil {
 			fmt.Printf("  Error building for %s/%s: %v\n", t.OS, t.Arch, err)
 			fmt.Printf("  Output: %s\n", string(out))
 		}

@@ -1,6 +1,7 @@
 package search
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -9,29 +10,24 @@ import (
 
 type WikipediaEngine struct{}
 
-func NewWikipediaEngine() *WikipediaEngine {
-	return &WikipediaEngine{}
-}
+func NewWikipediaEngine() *WikipediaEngine { return &WikipediaEngine{} }
 
-func (e *WikipediaEngine) Name() string {
-	return "Wikipedia"
-}
+func (e *WikipediaEngine) Name() string { return "Wikipedia" }
+func (e *WikipediaEngine) Code() string { return "wiki" }
 
-func (e *WikipediaEngine) Search(options Options) (*Response, error) {
-	baseURL := "https://en.wikipedia.org/w/api.php"
+func (e *WikipediaEngine) Search(ctx context.Context, opts Options) (*Response, error) {
 	params := url.Values{}
 	params.Add("action", "opensearch")
-	params.Add("search", options.Query)
-	params.Add("limit", fmt.Sprintf("%d", options.Limit))
+	params.Add("search", opts.Query)
+	params.Add("limit", fmt.Sprintf("%d", opts.Limit))
 	params.Add("namespace", "0")
 	params.Add("format", "json")
 
-	client := &http.Client{}
-	req, err := http.NewRequest("GET", fmt.Sprintf("%s?%s", baseURL, params.Encode()), nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", "https://en.wikipedia.org/w/api.php?"+params.Encode(), nil)
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("User-Agent", "AtlasWebSearch/1.0 (https://github.com/user/atlas-websearch)")
+	req.Header.Set("User-Agent", userAgent)
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -39,27 +35,34 @@ func (e *WikipediaEngine) Search(options Options) (*Response, error) {
 	}
 	defer resp.Body.Close()
 
-	var raw []interface{}
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("wiki: status %d", resp.StatusCode)
+	}
+
+	var raw []any
 	if err := json.NewDecoder(resp.Body).Decode(&raw); err != nil {
 		return nil, err
 	}
-
 	if len(raw) < 4 {
 		return &Response{}, nil
 	}
 
-	titles := raw[1].([]interface{})
-	descriptions := raw[2].([]interface{})
-	urls := raw[3].([]interface{})
+	titles, _ := raw[1].([]any)
+	descriptions, _ := raw[2].([]any)
+	urls, _ := raw[3].([]any)
 
-	results := []Result{}
-	for i := 0; i < len(titles); i++ {
-		results = append(results, Result{
-			Title:   titles[i].(string),
-			URL:     urls[i].(string),
-			Snippet: descriptions[i].(string),
-		})
+	out := make([]Result, 0, len(titles))
+	for i := range titles {
+		title, _ := titles[i].(string)
+		desc := ""
+		if i < len(descriptions) {
+			desc, _ = descriptions[i].(string)
+		}
+		link := ""
+		if i < len(urls) {
+			link, _ = urls[i].(string)
+		}
+		out = append(out, Result{Title: title, URL: link, Snippet: desc})
 	}
-
-	return &Response{Results: results}, nil
+	return &Response{Results: out}, nil
 }

@@ -2,18 +2,20 @@
 
 ![Banner Image](./banner-image.png)
 
-**atlas.websearch** is a fast, interactive terminal user interface (TUI) for web searching. It aggregates results from multiple zero-config sources and presents them in a clean, navigable interface.
+**atlas.websearch** is a fast, interactive terminal user interface (TUI) for web searching. It aggregates results from multiple zero-config sources and presents them on a phosphor-CRT console styled interface inspired by 1970s engineering workstations.
 
 ![Go Version](https://img.shields.io/badge/Go-1.25+-00ADD8?style=flat&logo=go)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey)
 
 ## ✨ Features
 
-- 🚀 **Zero Config:** No API keys required for core engines (DDG, Wiki, HN, Reddit).
-- 🎨 **Beautiful TUI:** Built with `bubbletea` and `lipgloss` for a modern terminal experience.
-- 🔍 **Multiple Engines:** Switch between general search, tech news, or encyclopedic summaries.
-- 🌐 **Direct Access:** Open results instantly in your default browser.
-- 📦 **Cross-Platform:** Binaries available for Windows, Linux, and macOS (x86, x64, ARM).
+- 📡 **Zero Config:** No API keys required — DuckDuckGo, Wikipedia, Hacker News, and Reddit work out of the box.
+- 🔀 **Multi-Engine Fan-out:** Query every engine in parallel with `-e all`; results are merged round-robin so no engine dominates the top.
+- ⚡ **Per-engine Telemetry:** Live pills for engine state, latency class, and hit counts.
+- 🔍 **In-App Search:** Type `/` to re-enter the console and issue a new query without restarting.
+- 🔁 **Cycle & Re-run:** Press `e` to swap engines and `r` to re-run without re-typing.
+- 🌐 **Direct Access:** Enter opens the highlighted result in your default browser.
+- 📦 **Cross-Platform:** Binaries available for Windows, Linux, and macOS (AMD64, ARM64).
 
 ## 🚀 Installation
 
@@ -21,55 +23,66 @@
 ```bash
 git clone https://github.com/fezcode/atlas.websearch
 cd atlas.websearch
-go build -o atlas .
+go build -o atlas.websearch .
 ```
 
 ## ⌨️ Usage
 
-Simply run the binary with your search query in quotes:
-
 ```bash
-# General search (DuckDuckGo)
-atlas "Golang concurrency"
+# General search (DuckDuckGo, interactive UI)
+atlas.websearch "Golang concurrency"
 
-# Search specific engine
-atlas -e wiki "Quantum Computing"
-atlas -e hn "Apple Vision Pro"
-atlas -e reddit "Self Hosted"
+# Specific engine
+atlas.websearch -e wiki "Quantum Computing"
+atlas.websearch -e hn "Apple Vision Pro"
+atlas.websearch -e reddit "Self Hosted"
 
-# Use explicit query flag
-atlas -q "SpaceX" -e ddg
+# Fan out to every engine at once
+atlas.websearch -e all "Rust vs Go"
+
+# Bigger result set
+atlas.websearch -e ddg -l 25 "SpaceX"
+
+# Launch with no query and search from inside the TUI
+atlas.websearch
 ```
 
 ### Options
-- `-e`: Search engine (`ddg`, `wiki`, `hn`, `reddit`). Default: `ddg`.
-- `-l`: Result limit. Default: `10`.
-- `-q`: Explicit query string.
+- `-q`: Explicit query string (alternative to positional args).
+- `-e`: Engine: `ddg`, `wiki`, `hn`, `reddit`, or `all`. Default: `ddg`.
+- `-l`: Per-engine result limit. Default: `10`.
 
 ## 🕹️ Controls
 
 | Key | Action |
 |-----|--------|
 | `↑/↓` or `k/j` | Navigate results |
-| `Enter` | Open selected result in browser |
-| `q` or `Esc` | Quit Atlas |
+| `g` / `G` | Jump to first / last result |
+| `Enter` or `o` | Open selected result in browser |
+| `/` | Focus console, enter a new query |
+| `e` / `E` | Cycle engine forward / backward (re-runs the query) |
+| `r` | Re-run the current query |
+| `q` or `Esc` | Quit |
 | `Ctrl+C` | Force quit |
 
 ## 🛠️ Engines
 
-- **DuckDuckGo:** General web results and summaries.
-- **Wikipedia:** Encyclopedic abstracts and direct article links.
-- **Hacker News:** Top tech stories and discussions via Algolia.
-- **Reddit:** Thread search across all subreddits.
+| Code | Source | Notes |
+|------|--------|-------|
+| `ddg` | DuckDuckGo | HTML lite endpoint — general web results. |
+| `wiki` | Wikipedia | OpenSearch API — encyclopedic abstracts. |
+| `hn` | Hacker News | Algolia API — stories with points and comments. |
+| `reddit` | Reddit | Public search JSON — threads across all subs. |
+| `all` | fan-out | All four in parallel, merged round-robin. |
 
 ## 🏗️ Building for all platforms
 
-The project uses **gobake** to generate binaries for all platforms:
+The project uses **gobake** to generate binaries for all supported platforms:
 
 ```bash
 gobake build
 ```
-Binaries will be placed in the `build/` directory.
+Binaries are placed in the `build/` directory.
 
 ## 📄 License
 MIT License - see [LICENSE](LICENSE) for details.

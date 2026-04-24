@@ -1,6 +1,7 @@
 package search
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -9,13 +10,10 @@ import (
 
 type HackerNewsEngine struct{}
 
-func NewHackerNewsEngine() *HackerNewsEngine {
-	return &HackerNewsEngine{}
-}
+func NewHackerNewsEngine() *HackerNewsEngine { return &HackerNewsEngine{} }
 
-func (e *HackerNewsEngine) Name() string {
-	return "Hacker News"
-}
+func (e *HackerNewsEngine) Name() string { return "Hacker News" }
+func (e *HackerNewsEngine) Code() string { return "hn" }
 
 type hnResponse struct {
 	Hits []struct {
@@ -29,55 +27,52 @@ type hnResponse struct {
 	} `json:"hits"`
 }
 
-func (e *HackerNewsEngine) Search(options Options) (*Response, error) {
-	baseURL := "https://hn.algolia.com/api/v1/search"
+func (e *HackerNewsEngine) Search(ctx context.Context, opts Options) (*Response, error) {
 	params := url.Values{}
-	params.Add("query", options.Query)
-	params.Add("tags", "story") // Only search for stories
-	params.Add("hitsPerPage", fmt.Sprintf("%d", options.Limit))
+	params.Add("query", opts.Query)
+	params.Add("tags", "story")
+	params.Add("hitsPerPage", fmt.Sprintf("%d", opts.Limit))
 
-	resp, err := http.Get(fmt.Sprintf("%s?%s", baseURL, params.Encode()))
+	req, err := http.NewRequestWithContext(ctx, "GET", "https://hn.algolia.com/api/v1/search?"+params.Encode(), nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("User-Agent", userAgent)
+
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
 
-	var hResp hnResponse
-	if err := json.NewDecoder(resp.Body).Decode(&hResp); err != nil {
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("hn: status %d", resp.StatusCode)
+	}
+
+	var hr hnResponse
+	if err := json.NewDecoder(resp.Body).Decode(&hr); err != nil {
 		return nil, err
 	}
 
-	results := []Result{}
-	for _, hit := range hResp.Hits {
+	out := make([]Result, 0, len(hr.Hits))
+	for _, hit := range hr.Hits {
 		title := hit.Title
 		if title == "" {
 			continue
 		}
-
 		link := hit.URL
 		if link == "" {
-			// If no external URL, link to the HN discussion
 			link = fmt.Sprintf("https://news.ycombinator.com/item?id=%s", hit.ObjectID)
 		}
-
-		snippet := fmt.Sprintf("By %s | %d points | %d comments", hit.Author, hit.Points, hit.NumComments)
+		snippet := fmt.Sprintf("by %s · %d pts · %d comments", hit.Author, hit.Points, hit.NumComments)
 		if hit.StoryText != "" {
-			snippet = hit.StoryText[:min(len(hit.StoryText), 200)] + "..."
+			text := hit.StoryText
+			if len(text) > 220 {
+				text = text[:220] + "…"
+			}
+			snippet = text + " — " + snippet
 		}
-
-		results = append(results, Result{
-			Title:   title,
-			URL:     link,
-			Snippet: snippet,
-		})
+		out = append(out, Result{Title: title, URL: link, Snippet: snippet})
 	}
-
-	return &Response{Results: results}, nil
-}
-
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
+	return &Response{Results: out}, nil
 }

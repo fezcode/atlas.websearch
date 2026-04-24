@@ -1,6 +1,7 @@
 package search
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -11,26 +12,22 @@ import (
 
 type DuckDuckGoEngine struct{}
 
-func NewDuckDuckGoEngine() *DuckDuckGoEngine {
-	return &DuckDuckGoEngine{}
-}
+func NewDuckDuckGoEngine() *DuckDuckGoEngine { return &DuckDuckGoEngine{} }
 
-func (e *DuckDuckGoEngine) Name() string {
-	return "DuckDuckGo"
-}
+func (e *DuckDuckGoEngine) Name() string { return "DuckDuckGo" }
+func (e *DuckDuckGoEngine) Code() string { return "ddg" }
 
-func (e *DuckDuckGoEngine) Search(options Options) (*Response, error) {
+func (e *DuckDuckGoEngine) Search(ctx context.Context, opts Options) (*Response, error) {
 	params := url.Values{}
-	params.Set("q", options.Query)
+	params.Set("q", opts.Query)
 
-	req, err := http.NewRequest("POST", "https://lite.duckduckgo.com/lite/", strings.NewReader(params.Encode()))
+	req, err := http.NewRequestWithContext(ctx, "POST", "https://lite.duckduckgo.com/lite/", strings.NewReader(params.Encode()))
 	if err != nil {
 		return nil, err
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+	req.Header.Set("User-Agent", userAgent)
 
-	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
@@ -38,19 +35,19 @@ func (e *DuckDuckGoEngine) Search(options Options) (*Response, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("search returned status %d", resp.StatusCode)
+		return nil, fmt.Errorf("ddg: status %d", resp.StatusCode)
 	}
 
 	doc, err := html.Parse(resp.Body)
 	if err != nil {
 		return nil, err
 	}
-
-	return &Response{Results: extractDDGResults(doc, options.Limit)}, nil
+	return &Response{Results: extractDDGResults(doc, opts.Limit)}, nil
 }
 
 func extractDDGResults(n *html.Node, limit int) []Result {
-	var links []struct{ text, href string }
+	type anchor struct{ text, href string }
+	var links []anchor
 	var snippets []string
 
 	var walk func(*html.Node)
@@ -60,16 +57,15 @@ func extractDDGResults(n *html.Node, limit int) []Result {
 			case "a":
 				if ddgHasClass(node, "result-link") {
 					href := ddgAttr(node, "href")
-					realURL := ddgDecodeRedirect(href)
+					real := ddgDecodeRedirect(href)
 					text := ddgTextContent(node)
-					if realURL != "" && text != "" {
-						links = append(links, struct{ text, href string }{text, realURL})
+					if real != "" && text != "" {
+						links = append(links, anchor{text, real})
 					}
 				}
 			case "td":
 				if ddgHasClass(node, "result-snippet") {
-					snippet := strings.TrimSpace(ddgTextContent(node))
-					snippets = append(snippets, snippet)
+					snippets = append(snippets, strings.TrimSpace(ddgTextContent(node)))
 				}
 			}
 		}
@@ -79,22 +75,18 @@ func extractDDGResults(n *html.Node, limit int) []Result {
 	}
 	walk(n)
 
-	var results []Result
-	for i, link := range links {
-		snippet := ""
+	out := make([]Result, 0, len(links))
+	for i, a := range links {
+		snip := ""
 		if i < len(snippets) {
-			snippet = snippets[i]
+			snip = snippets[i]
 		}
-		results = append(results, Result{
-			Title:   link.text,
-			URL:     link.href,
-			Snippet: snippet,
-		})
-		if limit > 0 && len(results) >= limit {
+		out = append(out, Result{Title: a.text, URL: a.href, Snippet: snip})
+		if limit > 0 && len(out) >= limit {
 			break
 		}
 	}
-	return results
+	return out
 }
 
 func ddgDecodeRedirect(href string) string {
